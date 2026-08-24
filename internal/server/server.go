@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 
 	"github.com/surajsencha/redis-clone/internal/config"
+	"github.com/surajsencha/redis-clone/internal/resp"
 )
 
 type Server struct {
@@ -48,9 +50,10 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
-	buffer := make([]byte, 1024)
+	r := resp.NewReader(conn)
+	w := resp.NewWriter(conn)
 	for {
-		n, err := conn.Read(buffer)
+		value, err := resp.Read(r)
 		if err != nil {
 			if err == io.EOF {
 				fmt.Println("Client disconnected")
@@ -59,8 +62,14 @@ func (s *Server) handleConnection(conn net.Conn) {
 			}
 			return
 		}
-		fmt.Println("Received Data : ", string(buffer[:n]))
-		_, err = conn.Write(buffer[:n])
+		if value.Type == resp.Array && len(value.Elems) > 0 {
+			commandName := value.Elems[0].Str
+			if strings.ToUpper(commandName) == "PING" {
+				reply := resp.Value{Type: resp.SimpleString, Str: "PONG"}
+				err = w.Write(reply)
+				w.Flush()
+			}
+		}
 		if err != nil {
 			fmt.Printf("Error writing to Connection: %v\n", err)
 			return
