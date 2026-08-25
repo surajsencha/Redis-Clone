@@ -9,25 +9,32 @@ import (
 	"github.com/surajsencha/redis-clone/internal/command"
 	"github.com/surajsencha/redis-clone/internal/config"
 	"github.com/surajsencha/redis-clone/internal/resp"
+	"github.com/surajsencha/redis-clone/internal/store"
 )
 
 type Server struct {
 	config   config.Config
 	listener net.Listener
 	registry *command.Registry
+	store    *store.Store
 }
 
 func NewServer(cfg *config.Config) *Server {
+	store := store.NewStore()
 	// 1. Create the registry
 	reg := command.NewRegistry()
 
 	// 2. Register the commands!
 	reg.Register("PING", command.Ping)
 	reg.Register("ECHO", command.Echo)
+	reg.Register("SET", command.Set(store))
+	reg.Register("GET", command.Get(store))
+	reg.Register("DEL", command.Del(store))
 
 	return &Server{
 		config:   *cfg,
 		registry: reg,
+		store:    store,
 	}
 }
 
