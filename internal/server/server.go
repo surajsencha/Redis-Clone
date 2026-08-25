@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 
+	"github.com/surajsencha/redis-clone/internal/command"
 	"github.com/surajsencha/redis-clone/internal/config"
 	"github.com/surajsencha/redis-clone/internal/resp"
 )
@@ -14,14 +14,23 @@ import (
 type Server struct {
 	config   config.Config
 	listener net.Listener
+	registry *command.Registry
 }
 
 func NewServer(cfg *config.Config) *Server {
-	return &Server{
-		config: *cfg,
-	}
+	// 1. Create the registry
+	reg := command.NewRegistry()
 
+	// 2. Register the commands!
+	reg.Register("PING", command.Ping)
+	reg.Register("ECHO", command.Echo)
+
+	return &Server{
+		config:   *cfg,
+		registry: reg,
+	}
 }
+
 func (s *Server) ListenAndServe() error {
 	listener, err := net.Listen(
 		"tcp",
@@ -62,18 +71,19 @@ func (s *Server) handleConnection(conn net.Conn) {
 			}
 			return
 		}
-		if value.Type == resp.Array && len(value.Elems) > 0 {
-			commandName := value.Elems[0].Str
-			if strings.ToUpper(commandName) == "PING" {
-				reply := resp.Value{Type: resp.SimpleString, Str: "PONG"}
-				err = w.Write(reply)
-				w.Flush()
-			}
+		if value.Type != resp.Array || len(value.Elems) == 0 {
+			continue
 		}
+
+		commandName := value.Elems[0].Str
+		args := value.Elems[1:]
+
+		reply := s.registry.Execute(commandName, args)
+		err = w.Write(reply)
 		if err != nil {
 			fmt.Printf("Error writing to Connection: %v\n", err)
-			return
 		}
+		w.Flush()
 	}
 }
 func (s *Server) Shutdown() error {

@@ -12,10 +12,9 @@ func main() {
 		panic(err)
 	}
 	defer conn.Close()
-
-	// 2. Send the exact RESP bytes for the PING command
-	fmt.Println("Sending PING...")
-	conn.Write([]byte("*1\r\n$4\r\nPING\r\n"))
+	fmt.Println("Sending just ECHO...")
+	// *1 (array of 1) -> $4 ECHO
+	conn.Write([]byte("*1\r\n$4\r\nECHO\r\n"))
 
 	// 3. Read the response from your server
 	buffer := make([]byte, 1024)
