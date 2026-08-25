@@ -30,7 +30,8 @@ func NewServer(cfg *config.Config) *Server {
 	reg.Register("SET", command.Set(store))
 	reg.Register("GET", command.Get(store))
 	reg.Register("DEL", command.Del(store))
-
+	reg.Register("TTL", command.TTL(store))
+	store.StartActiveExpiry()
 	return &Server{
 		config:   *cfg,
 		registry: reg,

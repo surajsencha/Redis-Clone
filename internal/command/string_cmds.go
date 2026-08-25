@@ -1,17 +1,31 @@
 package command
 
 import (
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/surajsencha/redis-clone/internal/resp"
 	"github.com/surajsencha/redis-clone/internal/store"
 )
 
 func Set(s *store.Store) Handler {
 	return func(args []resp.Value) (resp.Value, error) {
-		length := len(args)
-		if length != 2 {
+		var expireAt time.Time
+		if len(args) < 2 {
 			return resp.Value{Type: resp.Error, Str: "ERR wrong number of arguments for 'set' command"}, nil
 		}
-		s.Set(args[0].Str, args[1].Str)
+		if len(args) >= 4 && strings.ToUpper(args[2].Str) == "EX" {
+			seconds, err := strconv.Atoi(args[3].Str)
+			if err != nil {
+				return resp.Value{Type: resp.Error, Str: "ERR value is not an integer or out of range"}, nil
+			}
+			expireAt = time.Now().Add(time.Duration(seconds) * time.Second)
+		} else {
+			expireAt = time.Time{}
+		}
+
+		s.Set(args[0].Str, args[1].Str, expireAt)
 		return resp.Value{Type: resp.SimpleString, Str: "OK"}, nil
 	}
 }

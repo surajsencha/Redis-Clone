@@ -17,7 +17,7 @@ func main() {
 	// --- TEST 1: SET ---
 	fmt.Println("\n--- Test 1: SET ---")
 	// *3 (array of 3) -> $3 SET -> $4 name -> $5 suraj
-	conn.Write([]byte("*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$5\r\nsuraj\r\n"))
+	conn.Write([]byte("*5\r\n$3\r\nSET\r\n$4\r\nname\r\n$5\r\nsuraj\r\n"))
 	n, _ := conn.Read(buffer)
 	fmt.Printf("Expected: \"+OK\\r\\n\"\nGot:      %q\n", string(buffer[:n]))
 
