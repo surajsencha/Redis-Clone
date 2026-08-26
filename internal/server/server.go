@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 
+	"github.com/surajsencha/redis-clone/internal/aof"
 	"github.com/surajsencha/redis-clone/internal/command"
 	"github.com/surajsencha/redis-clone/internal/config"
 	"github.com/surajsencha/redis-clone/internal/resp"
@@ -17,10 +19,16 @@ type Server struct {
 	listener net.Listener
 	registry *command.Registry
 	store    *store.Store
+	aof      *aof.AOF
 }
 
 func NewServer(cfg *config.Config) *Server {
 	store := store.NewStore()
+	aof, err := aof.NewAOF("database.aof")
+	if err != nil {
+		panic(err)
+	}
+
 	// 1. Create the registry
 	reg := command.NewRegistry()
 
@@ -31,11 +39,23 @@ func NewServer(cfg *config.Config) *Server {
 	reg.Register("GET", command.Get(store))
 	reg.Register("DEL", command.Del(store))
 	reg.Register("TTL", command.TTL(store))
+
+	// Read the AOF file on startup to rebuild the database
+	aof.Read(func(value resp.Value) {
+		// This looks exactly like your handleConnection logic!
+		if value.Type == resp.Array && len(value.Elems) > 0 {
+			commandName := value.Elems[0].Str
+			args := value.Elems[1:]
+			reg.Execute(commandName, args)
+		}
+	})
+
 	store.StartActiveExpiry()
 	return &Server{
 		config:   *cfg,
 		registry: reg,
 		store:    store,
+		aof:      aof,
 	}
 }
 
@@ -84,6 +104,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 		}
 
 		commandName := value.Elems[0].Str
+		if strings.ToUpper(commandName) == "SET" || strings.ToUpper(commandName) == "DEL" {
+			s.aof.Write(value)
+		}
 		args := value.Elems[1:]
 
 		reply := s.registry.Execute(commandName, args)
@@ -95,5 +118,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 	}
 }
 func (s *Server) Shutdown() error {
+	s.aof.Close()
 	return s.listener.Close()
 }
