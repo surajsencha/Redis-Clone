@@ -39,6 +39,8 @@ func NewServer(cfg *config.Config) *Server {
 	reg.Register("GET", command.Get(store))
 	reg.Register("DEL", command.Del(store))
 	reg.Register("TTL", command.TTL(store))
+	reg.Register("RPUSH", command.RPush(store))
+	reg.Register("LRANGE", command.LRange(store))
 
 	// Read the AOF file on startup to rebuild the database
 	aof.Read(func(value resp.Value) {
@@ -104,7 +106,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		}
 
 		commandName := value.Elems[0].Str
-		if strings.ToUpper(commandName) == "SET" || strings.ToUpper(commandName) == "DEL" {
+		if strings.ToUpper(commandName) == "SET" || strings.ToUpper(commandName) == "DEL" || strings.ToUpper(commandName) == "RPUSH" {
 			s.aof.Write(value)
 		}
 		args := value.Elems[1:]

@@ -13,21 +13,15 @@ func main() {
 	defer conn.Close()
 	buffer := make([]byte, 1024)
 
-	// --- COMMENT THIS BLOCK OUT AFTER RUNNING ONCE ---
-
-	fmt.Println("\n--- Test 1: SET name suraj ---")
-	conn.Write([]byte("*3\r\n$3\r\nSET\r\n$4\r\nname\r\n$5\r\nsuraj\r\n"))
+	// --- TEST 1: RPUSH ---
+	fmt.Println("\n--- Test 1: RPUSH mylist a b c ---")
+	conn.Write([]byte("*5\r\n$5\r\nRPUSH\r\n$6\r\nmylist\r\n$1\r\na\r\n$1\r\nb\r\n$1\r\nc\r\n"))
 	n, _ := conn.Read(buffer)
-	fmt.Printf("Expected: \"+OK\\r\\n\"\nGot:      %q\n", string(buffer[:n]))
+	fmt.Printf("Expected: \":3\\r\\n\"\nGot:      %q\n", string(buffer[:n]))
 
-	// ------------------------------------------------
-
-	// --- TEST 2: GET the key ---
-	fmt.Println("\n--- Test 2: GET name ---")
-	conn.Write([]byte("*2\r\n$3\r\nGET\r\n$4\r\nname\r\n"))
-
-	// BUG FIX: You commented out conn.Read! The client wasn't waiting for the server's reply!
-	// n, _ := conn.Read(buffer)
-
-	fmt.Printf("Expected: \"$5\\r\\nsuraj\\r\\n\"\nGot:      %q\n", string(buffer[:n]))
+	// --- TEST 2: LRANGE ---
+	fmt.Println("\n--- Test 2: LRANGE mylist 0 -1 ---")
+	conn.Write([]byte("*4\r\n$6\r\nLRANGE\r\n$6\r\nmylist\r\n$1\r\n0\r\n$2\r\n-1\r\n"))
+	n, _ = conn.Read(buffer)
+	fmt.Printf("Got:      %q\n", string(buffer[:n]))
 }
